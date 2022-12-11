@@ -1,0 +1,83 @@
+*CALCULAR GRAU DE ENTRADA E SAÍDA
+MATCH (a:Pessoa)
+RETURN a.idpessoa, size((a)<--(:Pessoa)) as In_Degree, size((a)-->(:Pessoa)) as Out_Degree
+
+*CALCULAR PESO DE ENTRADA e SAÍDA
+CALL algo.degree.stream("Pessoa", "Publicou", {direction: "incoming", weightProperty: "total"})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId).idpessoa AS name, score AS weightedFollowers
+ORDER BY score DESC 
+
+CALL algo.degree.stream("Pessoa", "Publicou", {direction: "outgoing", weightProperty: "total"})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId).idpessoa AS name, score AS weightedFollowers
+ORDER BY score DESC
+
+*CALCULAR COMPONENTES CONEXAS
+
+CALL algo.unionFind.stream('Pessoa', 'Publicou', {})
+YIELD nodeId,setId
+RETURN algo.asNode(nodeId).idpessoa AS user, setId
+
+
+*MENOR CAMINHO ENTRE TODAS AS PESSOAS (SHORTEST PATH) 
+
+MATCH (n:Pessoa)
+WITH collect(n) as nodes
+UNWIND nodes as n
+UNWIND nodes as m
+WITH * WHERE id(n) < id(m)
+MATCH path = allShortestPaths( (n)-[*..10]->(m) )
+RETURN n.idpessoa, length(path), m.idpessoa
+ORDER BY length(path) DESC
+
+********************************************************************************
+*MAIOR CAMINHO ENTRE TODAS AS PESSOAS (LONGEST PATH)   (***PROBLEMA***)
+MATCH (n:Pessoa)
+WITH collect(n) as nodes
+UNWIND nodes as n
+UNWIND nodes as m
+WITH * WHERE id(n) < id(m)
+MATCH path = (n)-[*]->(m)
+RETURN n.idpessoa, length(path), m.idpessoa
+ORDER BY length(path) DESC
+*******************************************************************************
+
+*CALCULAR TRIANGULOS
+CALL algo.triangleCount.stream('Pessoa', 'Publicou', {concurrency:4})
+YIELD nodeId, triangles, coefficient
+RETURN algo.asNode(nodeId).idpessoa AS name, triangles, coefficient
+ORDER BY triangles DESC
+
+*CALCULAR DENSIDADE
+MATCH (p:Pessoa)-[r:Publicou]-(f:Pessoa) 
+RETURN count(DISTINCT p) as nrNodes, 
+count(DISTINCT r) as nrEdges,
+count(DISTINCT r)/((count(DISTINCT p)-1) * (count(DISTINCT p) - 1.0)) AS graphDensity
+
+*BETWEENESS
+CALL algo.betweenness.stream('Pessoa','Publicou',{direction:'out'})
+YIELD nodeId, centrality
+MATCH (user:Pessoa) WHERE id(user) = nodeId
+RETURN user.idpessoa AS user,centrality
+ORDER BY centrality DESC;
+
+*CLOSENESS
+CALL algo.closeness.stream('Pessoa', 'Publicou')
+YIELD nodeId, centrality
+RETURN algo.asNode(nodeId).idpessoa AS node, centrality
+ORDER BY centrality DESC
+
+*PAGERANK
+CALL algo.pageRank.stream('Pessoa', 'Publicou', {iterations:20, dampingFactor:0.85})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId).idpessoa AS page,score
+ORDER BY score DESC
+
+
+* VER GRUPOS
+MATCH p=(a)-[r:CONTAINS]->(b) RETURN a.id, b.idpessoa
+
+
+
+

@@ -1,0 +1,5 @@
+clean.py - limpa todos os dados
+reset.py - remove todos clusters
+netsc_par.py - NETScan paralelo para várias partições
+netsc_full.py - NETScan para base completa
+
